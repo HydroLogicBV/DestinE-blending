@@ -1,0 +1,17 @@
+logs/
+outputs/
+tmp/
+data/
+model/
+.venv/
+__pycache__/
+.pytest_cache/
+.git/
+*.pyc
+*.pyo
+*.pyd
+.DS_Store
+.env*
+.ipynb_checkpoints/
+notebooks/
+*.log
