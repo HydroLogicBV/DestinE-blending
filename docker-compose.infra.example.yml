@@ -1,0 +1,25 @@
+# Example of the runtime contract for infrastructure
+services:
+  nowcast-blend:
+    # Replace this with the image name/tag built by CI.
+    image: nowcast-blend:latest
+    environment:
+      # Writable runtime data root inside the container.
+      - DATA_DIR=/data
+      # Optional:
+      # Local pre-downloaded DGMR model path.
+      # Set DGMR_MODEL_PATH only when mounting a predownloaded DGMR model.
+      # If unset, the application falls back to remote TensorFlow Hub/GCS.
+      # - DGMR_MODEL_PATH=/model
+      # Number of parallel workers. Increase only if memory allows parallel members.
+      - DGMR_MAX_WORKERS=1
+      # Secret credentials for data download. Provide these from Secret objects.
+      - KNMI_API_KEY
+      - POLYTOPE_USER_KEY
+    volumes:
+      # Persist downloads, intermediates, outputs and logs in runtime storage.
+      # This can be an emptyDir for scratch or a PVC for persistence.
+      - /path/to/writable/scratch:/data
+      # Optional local DGMR model cache.
+      # - /path/to/dgmr/model:/model:ro
+    command: ["python", "-m", "nowcast_blend.main", "settings.rt=true"]

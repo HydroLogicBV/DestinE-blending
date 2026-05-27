@@ -1,0 +1,50 @@
+paths:
+    data: ${oc.env:DATA_DIR,data}
+    input_dir: input
+    output_dir: output
+
+# this is only used if settings.rt is false
+rundate:
+    year: 2026
+    month: 05
+    day: 20
+    hour: 12
+
+settings:
+    param: 228                 # Parameter number of the forecast to use. For ExtremesDT, 228 is the total precipitation.
+    destine_extension: '.grib' # The file extension of the forecast to use. For ExtremesDT, this should be grib.
+    gauge_adjusted: True       # If true uses the gauge adjusted radar data from KNMI, if false it uses the non-gauge adjusted radar data from KNMI
+    rt: False                   # If true, it uses the current datetime (rounded down to the closest 30-minutes) as the date for which to run the blending code. If false, it uses the custom date specified in the code.
+    timesteps: 24              # Number of timesteps * timestep interval (minutes) determines the total lead time 
+    timestep_interval: 30      # Minutes. What is the forecast time step
+    n_ens_members: 20          # Total number of ensemble members
+    n_ens_members_dgmr: 5      # number of ensembles generated using DGMR
+    weights_method: bps        # The weights method used if custom weights or machine learning weights are not used
+    historical_destine: False  # True   #If set to True, will use an already downloaded forecast. If set to False, a new Extremes DT forecast will be downloaded (currently does not support multi-model yet if set to false)
+    return_weights: False      # If set to true saves a numpy array with the weights used to make the forecast
+    custom_weights: False      # If set to false, uses the weights as determined by pySTEPS. If a dictionairy of weights is supplied, uses those weights
+    re_do_blending: False      # If set to true, re-do the blending even though there is already a blend with the current settings saved
+    multi_model: False         # If set to true uses both ExtremesDT and IFS forecasts. Only supproted for historical forecasts for now
+    noise: True                # If set to true uses noise in the blending algorithm (is overwritten if machine learning weights are seleced)
+    probmatching: True         # If set to true uses probmatching in the blending algorithm (is overwritten if machine learning weights are seleced)
+    pysteps_nowcast: False     # If set to True uses the pysteps nowcast instead of the DGMR nowcast
+    custom_extention: None     # If a custom extention is provided, adds this custom extention to the filename at the end
+    use_machine_learning_weights: True     # If set to true, uses the machine learning algorithm to determine the weights used by the blending algorithm and surpasses any custom weights given.
+    #TODO: KW: if this is false where does it use the existing ml weights?
+
+runtime:
+    log_level: INFO             # Application log level. Use DEBUG for more detailed nowcast-blend logs.
+    dgmr_max_workers: ${oc.env:DGMR_MAX_WORKERS,null}  # DGMR is memory-heavy; tune per runtime.
+    pysteps_random_seed: 42  # Make pysteps blending noise and pysteps RainFARM reproducible.
+    dgmr_random_seed: 42    # Make newly generated DGMR ensembles reproducible.
+
+hydra:
+    run:
+        dir: ${paths.data}/logs/hydra/${now:%Y-%m-%d_%H-%M-%S}
+    output_subdir: hydra
+    job:
+        chdir: false
+    job_logging:
+        handlers:
+            file:
+                filename: ${hydra.runtime.output_dir}/main.log
