@@ -1,0 +1,17 @@
+# Copy this file to .envrc and edit local paths/secrets.
+# Do not commit .envrc.
+
+# Local Python runs use this as the runtime data root.
+export DATA_DIR="$PWD/data"
+
+# Optional: local Python runs can use a pre-downloaded DGMR model from this path.
+# export DGMR_MODEL_PATH="$PWD/model"
+
+# DGMR is memory-heavy. Keep this at 1 unless the runtime has enough memory.
+export DGMR_MAX_WORKERS=1
+
+# Private KNMI API credential to download radar data.
+# export KNMI_API_KEY="add_your_credential"
+
+# Private Destination Earth / Polytope credential to download DestinE data.
+# export POLYTOPE_USER_KEY="add_your_credential"

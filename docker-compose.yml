@@ -6,7 +6,7 @@ services:
       context: .
       dockerfile: Dockerfile
     # Uncomment only to test the Linux/amd64 image on Apple Silicon. It is much slower.
-    platform: linux/amd64
+    # platform: linux/amd64
     environment:
       # Writable runtime data root path inside the container.
       - DATA_DIR=/data
@@ -23,4 +23,4 @@ services:
       # Optional local DGMR model cache.
       - ./model:/model:ro
     # Reduced ensemble sizes make the Docker integration run cheaper locally.
-    command: ["python", "-m", "nowcast_blend.main", "settings.n_ens_members_dgmr=1", "settings.n_ens_members=1"]
+    command: ["python", "-m", "nowcast_blend.main", "settings.n_ens_members_dgmr=1", "settings.n_ens_members=2"]
