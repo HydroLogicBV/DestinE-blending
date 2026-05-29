@@ -217,7 +217,7 @@ def convert_input_to_xarray_dataset(
 
     # flip yr vector if yorigin is upper
     if metadata["yorigin"] == "upper":
-        # y_r = np.flip(y_r)
+        y_r = np.flip(y_r)
         b = 1
 
     lat, lon = compute_lat_lon(x_r, y_r, metadata["projection"])
