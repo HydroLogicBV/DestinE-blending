@@ -77,8 +77,8 @@ def load_and_preprocess_destine(
             destine_nlgrid_blend = validate_destine_file(destine_nlgrid, radar_xr, cfg)
             destine_nlgrid_blend.load()
             return destine_nlgrid_blend
-        except ValueError:
-            log.info("Pre-processed file invalid")
+        except (OSError, ValueError) as e:
+            log.info(f"Pre-processed file invalid: {e}")
         finally:
             if destine_nlgrid is not None:
                 destine_nlgrid.close()
