@@ -69,14 +69,19 @@ def load_and_preprocess_destine(
         log.info(
             f"Existing pre-processed DestinE file found: {destine_file_preprocessed}"
         )
+        destine_nlgrid = None
         try:
             destine_nlgrid = xr.open_dataset(
                 destine_file_preprocessed, engine="netcdf4"
             )
             destine_nlgrid_blend = validate_destine_file(destine_nlgrid, radar_xr, cfg)
+            destine_nlgrid_blend.load()
             return destine_nlgrid_blend
         except ValueError:
             log.info("Pre-processed file invalid")
+        finally:
+            if destine_nlgrid is not None:
+                destine_nlgrid.close()
     else:
         log.info(f"Pre-processing the DestinE file: {destine_file_original_nc}")
         destine_nlgrid = xr.open_dataset(destine_file_original_nc)
