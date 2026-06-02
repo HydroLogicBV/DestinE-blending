@@ -288,18 +288,6 @@ def pre_process_destine_data(
     }  # KW: what is this new param about?
 
     accum_prcp = destinE_data["tp"] * 1000
-    # NOTE: Limit preprocessing to the blend window to avoid downscaling/advection
-    # over the full DestinE forecast. Keep one previous accumulation hour so the
-    # first precipitation difference is valid.
-    # TODO: Confirm with the researchers that no temporal context outside this
-    # window is scientifically required.
-    expected_start = pd.to_datetime(radar_xr["time"][-1].values) + timedelta(minutes=5)
-    expected_end = expected_start + timedelta(minutes=timestep_interval * timesteps)
-    source_start = expected_start - timedelta(hours=1)
-    source_end = expected_end
-    if "time" in accum_prcp.dims:
-        accum_prcp = accum_prcp.sel(time=slice(source_start, source_end))
-    #
 
     try:
         accum_prcp_subset = accum_prcp.sel(
