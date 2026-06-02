@@ -1,6 +1,5 @@
 import os
 import contextlib
-import io
 import numpy as np
 import pandas as pd
 import time
@@ -8,33 +7,20 @@ import time
 import pysteps
 from pysteps import blending, motion
 
+from nowcast_blend.utils.logging import LoggerStream
 
 import logging
 
 log = logging.getLogger(__name__)
 
 
-def log_pysteps_output(line):
-    info_prefixes = (
-        "Starting blended nowcast computation.",
-        "Repeating the NWP model for all ensemble members",
-        "Repeating the nowcast for all ensemble members",
-        "Computing nowcast for time step",
-    )
-    if line.startswith(info_prefixes):
-        log.info("pysteps: %s", line)
-    else:
-        log.debug("pysteps: %s", line)
-
-
 def run_pysteps_forecast(**kwargs):
-    stdout = io.StringIO()
-    try:
-        with contextlib.redirect_stdout(stdout):
+    stdout = LoggerStream(log, prefix="pysteps: ")
+    with contextlib.redirect_stdout(stdout):
+        try:
             return blending.steps.forecast(**kwargs)
-    finally:
-        for line in stdout.getvalue().splitlines():
-            log_pysteps_output(line)
+        finally:
+            stdout.flush()
 
 
 def blending_function(
