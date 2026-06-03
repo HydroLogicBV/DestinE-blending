@@ -25,13 +25,14 @@ def convert_npy_to_nc_file(
     # check formats are correct:
     # TODO: Check with researchers, timestep=10 seems wrong, I fixed it by inferring
     # Which in our case results into 1800s = 30min, is this what we want?
+    #Comment by Joep: I just ran into this issue and indeed 10 is wrong, should be 1800. even cleaner to infer it like you did. nice fix
     timestamps = pd.to_datetime(metadata_blend["timestamps"])
     startdate = timestamps[0]
     startdate_dt = pd.to_datetime(startdate).to_pydatetime()
     if len(timestamps) > 1:
         timestep = int((timestamps[1] - timestamps[0]).total_seconds())
     else:
-        timestep = 10
+        timestep = 1800
 
     blended_forecast = convert_input_to_xarray_dataset(
         precip=np.load(path_blend),
