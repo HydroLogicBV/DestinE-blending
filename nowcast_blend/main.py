@@ -49,6 +49,7 @@ def run_pipeline(cfg: DictConfig) -> None:
             int(cfg.rundate.month),
             int(cfg.rundate.day),
             int(cfg.rundate.hour),
+            int(cfg.rundate.minute),
         )
     date_str = date.strftime("%Y%m%d%H")
     log.info(f"Running blending code for {date}")
