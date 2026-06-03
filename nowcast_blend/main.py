@@ -137,6 +137,9 @@ def run_pipeline(cfg: DictConfig) -> None:
     if int(cfg.settings.timestep_interval) != 5:
         step = int(cfg.settings.timestep_interval) // 5
         DGMR_det = DGMR_det_long[:, ::step]
+        del DGMR_det_long
+        import gc
+        gc.collect()
     else:
         DGMR_det = DGMR_det_long
 
