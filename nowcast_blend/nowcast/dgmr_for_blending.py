@@ -235,8 +235,3 @@ def run_dgmr_ensemble(
     )
 
     return DGMR_ens
-
-
-if __name__ == "__main__":
-    output = run_dgmr(R)
-    log.info("DGMR_det shape:", output.shape)
