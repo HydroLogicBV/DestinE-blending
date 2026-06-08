@@ -9,7 +9,7 @@ rundate:
     month: 05
     day: 20
     hour: 12
-    minute: 30
+    minute: 00
 
 settings:
     param: 228                 # Parameter number of the forecast to use. For ExtremesDT, 228 is the total precipitation.

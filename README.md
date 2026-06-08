@@ -71,6 +71,8 @@ Suggested starting point for an infra run that generates DGMR:
 - disk: _at least_ 10 GiB for image plus runtime outputs/intermediates
 - `DGMR_MAX_WORKERS=1` unless the runtime has enough memory for parallel DGMR members
 
+By default, DGMR generation runs in a subprocess (`runtime.dgmr_subprocess: True`) so TensorFlow memory is released when the child process exits. Set `runtime.dgmr_subprocess=False` for debugging or if the runtime cannot start subprocesses.
+
 Network access:
 
 - KNMI Data Platform for radar downloads

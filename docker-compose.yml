@@ -23,4 +23,11 @@ services:
       # Optional local DGMR model cache.
       - ./model:/model:ro
     # Reduced ensemble sizes make the Docker integration run cheaper locally.
-    command: ["python", "-m", "nowcast_blend.main", "settings.n_ens_members_dgmr=1", "settings.n_ens_members=2"]
+    command:
+      - python
+      - -m
+      - nowcast_blend.main
+      - settings.n_ens_members_dgmr=1
+      - settings.n_ens_members=2
+      - settings.timesteps=6
+      - runtime.dgmr_subprocess=True
