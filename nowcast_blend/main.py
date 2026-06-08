@@ -1,5 +1,3 @@
-import numpy as np
-
 from datetime import datetime, timezone
 import time
 
@@ -14,7 +12,7 @@ from nowcast_blend.download.download_radar import run_download_radar
 from nowcast_blend.download.download_destine import run_download_destine
 from nowcast_blend.preprocess.preprocess_radar import load_and_preprocess_radar
 from nowcast_blend.preprocess.preprocess_destine import load_and_preprocess_destine
-from nowcast_blend.nowcast.dgmr_for_blending import run_dgmr_ensemble
+from nowcast_blend.nowcast.dgmr_orchestration import load_or_generate_dgmr_ensemble
 from nowcast_blend.machine_learning.machine_learning import (
     run_machine_learning,
     build_machine_learning_custom_weights,
@@ -33,7 +31,6 @@ log = logging.getLogger(__name__)
 warnings.filterwarnings(
     "ignore", category=UserWarning, module="nowcast_blend.preprocess.preprocess_radar"
 )
-
 
 def run_pipeline(cfg: DictConfig) -> None:
     logging.getLogger("nowcast_blend").setLevel(str(cfg.runtime.log_level).upper())
@@ -115,23 +112,9 @@ def run_pipeline(cfg: DictConfig) -> None:
         dirs.dgmr
         / f"DGMR_{date_str}_step_min_{cfg.settings.timestep_interval}_len_{cfg.settings.timesteps}_ens_{cfg.settings.n_ens_members_dgmr}.npy"
     )
-    if not dgmr_file.exists():
-        log.info(f"DGMR file is missing so we have to make the nowcast: {dgmr_file}")
-        # if DGMR hasn't been run, then run it and save it
-        DGMR_det_long = run_dgmr_ensemble(
-            R_xr.precip_intensity.values,
-            ens_members=int(cfg.settings.n_ens_members_dgmr),
-            forecast_length=int(
-                (int(cfg.settings.timestep_interval) * int(cfg.settings.timesteps)) / 90
-            ),
-            max_workers=cfg.runtime.dgmr_max_workers,
-            random_seed=cfg.runtime.dgmr_random_seed,
-        )
-        np.save(dgmr_file, DGMR_det_long, allow_pickle=True)
-    else:
-        # if dgmr has been run, then just import it from file
-        log.info(f"Importing DGMR file: {dgmr_file}")
-        DGMR_det_long = np.load(dgmr_file, allow_pickle=True)
+    DGMR_det_long = load_or_generate_dgmr_ensemble(
+        R_xr.precip_intensity.values, dgmr_file, cfg
+    )
 
     # Select only the relevant time steps from the DGMR output
     if int(cfg.settings.timestep_interval) != 5:

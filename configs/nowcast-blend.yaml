@@ -35,6 +35,7 @@ settings:
 
 runtime:
     log_level: INFO             # Application log level. Use DEBUG for more detailed nowcast-blend logs.
+    dgmr_subprocess: True       # Run DGMR in a subprocess.
     dgmr_max_workers: ${oc.env:DGMR_MAX_WORKERS,null}  # DGMR is memory-heavy; tune per runtime.
     pysteps_random_seed: 42  # Make pysteps blending noise and pysteps RainFARM reproducible.
     dgmr_random_seed: 42    # Make newly generated DGMR ensembles reproducible.

@@ -14,23 +14,12 @@ Author: Joep (refactored as module by ChatGPT)
 """
 
 import os, certifi
-import sys
 import time as timing
-import shutil
-import requests
 import numpy as np
 from functools import lru_cache
-from datetime import datetime, timedelta
-from base64 import decodebytes
-
-from pysteps import io
-from pysteps.utils import conversion
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 os.environ["CURL_CA_BUNDLE"] = certifi.where()
-
-import tensorflow as tf
-import tensorflow_hub
-
 
 import logging
 
@@ -58,6 +47,8 @@ def get_model_path(input_height, input_width):
 
 def load_module(input_height, input_width):
     """Load DGMR from local SavedModel path if configured, otherwise TF-Hub/GCS."""
+    import tensorflow_hub
+
     model_path = get_model_path(input_height, input_width)
     log.info("Loading DGMR model from %s", model_path)
     hub_module = tensorflow_hub.load(model_path)
@@ -78,6 +69,8 @@ def predict(
     random_seed=None,
 ):
     """Run DGMR model prediction."""
+    import tensorflow as tf
+
     input_frames = tf.math.maximum(input_frames, 0.0)
     input_frames = tf.expand_dims(input_frames, 0)
     input_frames = tf.tile(input_frames, multiples=[num_samples, 1, 1, 1, 1])
@@ -109,6 +102,8 @@ def run_dgmr(R, module=None, runtimes=4, random_seed=None):
     # Load the model for size 1536 by 1280
 
     """Run the DGMR pipeline and return deterministic forecast (DGMR_det)."""
+    import tensorflow as tf
+
     if module is None:
         module = get_module()
 
@@ -168,10 +163,6 @@ def run_dgmr(R, module=None, runtimes=4, random_seed=None):
     )
 
     return DGMR_det
-
-
-import time as timing
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 def run_dgmr_ensemble(
