@@ -1,0 +1,18 @@
+rainfall:
+  rainfall_var: "precip_intensity"
+  ens_var: "ens_number"
+
+processing:
+  resample_to: "24h"
+
+thresholds:
+  - 10
+  - 20
+  - 30
+
+percentiles:
+  - 0.3
+  - 0.5
+  - 0.9
+
+hours_list:

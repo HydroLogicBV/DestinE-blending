@@ -54,7 +54,21 @@ def convert_npy_to_nc_file(
     # radar_nowcast.precip_intensity.attrs["transform"] = "No"
     blended_forecast.precip_intensity.attrs["transform"] = "No"
 
+    if "time" in blended_forecast.dims:
+        precip_var = blended_forecast.attrs.get("precip_var", list(blended_forecast.data_vars)[0])
+        cumulative = blended_forecast[precip_var].cumsum(dim="time")
+        cumulative.name = f"{precip_var}_cumulative"
+        cumulative.attrs = {
+            "long_name": "cumulative precipitation over the forecast period",
+            "units": blended_forecast[precip_var].attrs.get("units", ""),
+            "comment": "Cumulative sum over the time dimension",
+        }
+        blended_forecast = blended_forecast.assign({cumulative.name: cumulative})
+
     blended_forecast.to_netcdf(path_blend[:-3] + "nc")
+
+
+
     # radar_nowcast.to_netcdf(path_nowcast[:-3] + 'nc')
 
     # if path_nwp!= None:
