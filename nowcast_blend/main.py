@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 import time
+from zipfile import Path
 
 import pysteps
 from pysteps.utils import transformation
@@ -13,6 +14,7 @@ from nowcast_blend.download.download_destine import run_download_destine
 from nowcast_blend.preprocess.preprocess_radar import load_and_preprocess_radar
 from nowcast_blend.preprocess.preprocess_destine import load_and_preprocess_destine
 from nowcast_blend.nowcast.dgmr_orchestration import load_or_generate_dgmr_ensemble
+from nowcast_blend.postprocess.ensemble_probabilities_destine import ensemble_probabilities_destine
 from nowcast_blend.machine_learning.machine_learning import (
     run_machine_learning,
     build_machine_learning_custom_weights,
@@ -221,6 +223,20 @@ def run_pipeline(cfg: DictConfig) -> None:
     convert_npy_to_nc_file(
         str(blended_file), dgmr_file, destine_nlgrid_blend_metadata, metadata_DGMR
     )
+
+    log.info("--------------------------------------------------------------------")
+    log.info("7. run zware-buien post-processing...")
+    log.info("--------------------------------------------------------------------")
+
+    from pathlib import Path
+
+    # Get the path relative to the nowcast_blend package
+    config_path = str(Path(__file__).parent.parent / "configs" / "zware-buien.yaml")
+
+    blended_file_nc = str(blended_file)[:-4] + ".nc"
+    blended_file_zware_buien = Path(str(blended_file)[:-4] + "_zware_buien.nc")
+    ensemble_probabilities_destine(config_path, str(blended_file_nc), blended_file_zware_buien)
+
 
     log.info(f"{(time.time() - start_time)/60} minutes")
 

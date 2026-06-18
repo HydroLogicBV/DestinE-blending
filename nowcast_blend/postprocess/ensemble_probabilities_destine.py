@@ -32,30 +32,7 @@ def load_config(path: str) -> RainfallConfig:
         hours_list=raw.get("hours_list"),
     )
 
-# --- AANPASSEN VOOR OPERATIONEEL ---
-config = load_config(r"\configs\zware-buien.yaml")
-path = r"RAINFALL_BLENDING_NC.nc"
-output_file = Path(r"cRAINFALL_BLENDING_NC_ZB.nc")
-# --- AANPASSEN VOOR OPERATIONEEL ---
 
-ds = xr.open_dataset(path)
-
-ds = ds.assign_coords(
-    time=ds["time"].values[0] + np.arange(len(ds.time)) * np.timedelta64(1, "h")
-)
-ds = xr.open_dataset(path)
-
-ds = ds.assign_coords(
-    time=ds["time"].values[0] + np.arange(len(ds.time)) * np.timedelta64(1, "h")
-)
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[logging.StreamHandler()]
-)
-
-logging.info("Start met statistieken berekenen")
 
 # --- Helper function om 2 timesteps te verzekeren ---
 def ensure_two_timesteps(da: xr.DataArray) -> xr.DataArray:
@@ -289,14 +266,40 @@ def add_statistics_to_dataset(
             da = da.broadcast_like(ds_out)
 
         ds_out[var_name] = da
+    
+    for variables in ds_out.variables:
+        ds_out[variables].attrs['grid_mapping'] = 'polar_stereographic'
+        ds_out[variables].attrs['coordinates'] = 'lat lon'
 
 
     return ds_out
 
+def ensemble_probabilities_destine(config_path, path, output_file):
+    # --- AANPASSEN VOOR OPERATIONEEL ---
+    config = load_config(config_path)
+    #config = load_config(r"\configs\zware-buien.yaml")
+    #path = r"RAINFALL_BLENDING_NC.nc"
+    #output_file = Path(r"cRAINFALL_BLENDING_NC_ZB.nc")
+    # --- AANPASSEN VOOR OPERATIONEEL ---
 
-# --- Main ---
-if __name__ == "__main__":
+    ds = xr.open_dataset(path)
 
+    ds = ds.assign_coords(
+        time=ds["time"].values[0] + np.arange(len(ds.time)) * np.timedelta64(1, "h")
+    )
+    ds = xr.open_dataset(path)
+
+    ds = ds.assign_coords(
+        time=ds["time"].values[0] + np.arange(len(ds.time)) * np.timedelta64(1, "h")
+    )
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        handlers=[logging.StreamHandler()]
+    )
+
+    logging.info("Start met statistieken berekenen")
     da = ds[config.rainfall_var]
     da = da.where(np.isfinite(da)).fillna(0)
     da = da.where(da >= 0, 0)
@@ -307,3 +310,7 @@ if __name__ == "__main__":
     ds_with_stats.to_netcdf(output_file, engine="netcdf4")
 
     logging.info(f"Dataset met statistieken geschreven: {output_file}")
+
+# --- Main ---
+if __name__ == "__main__":
+    ensemble_probabilities_destine(r"\configs\zware-buien.yaml", r"RAINFALL_BLENDING_NC.nc", Path(r"cRAINFALL_BLENDING_NC_ZB.nc"))
