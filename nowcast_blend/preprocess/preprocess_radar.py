@@ -216,7 +216,8 @@ def convert_input_to_xarray_dataset(
         )
 
     # flip yr vector if yorigin is upper
-    if metadata["yorigin"] == "upper":
+    print(metadata)
+    if metadata["yorigin"] == "upper" and metadata["institution"] == "European Centre for Medium-Range Weather Forecasts":
         y_r = np.flip(y_r)
         b = 1
 
