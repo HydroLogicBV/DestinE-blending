@@ -60,15 +60,16 @@ def convert_npy_to_nc_file(
         cumulative.name = f"{precip_var}_cumulative"
         cumulative.attrs = {
             "long_name": "cumulative precipitation over the forecast period",
-            "units": blended_forecast[precip_var].attrs.get("units", ""),
+            "units": 'mm',
             "comment": "Cumulative sum over the time dimension",
             "grid_mapping": "polar_stereographic",
             "coordinates": "lat lon",
-            "zr_a": blended_forecast[precip_var].attrs.get("zr_a", ""),
-            "zr_b": blended_forecast[precip_var].attrs.get("zr_b", ""),
             "threshold": blended_forecast[precip_var].attrs.get("threshold", ""),
             "zerovalue": blended_forecast[precip_var].attrs.get("zerovalue", ""),
         }
+        assert (cumulative.diff(dim="time") >= 0).all(), (
+            "Cumulative precipitation: found decreasing values across time. "           
+        )
         blended_forecast = blended_forecast.assign({cumulative.name: cumulative})
 
     blended_forecast.to_netcdf(path_blend[:-3] + "nc")
