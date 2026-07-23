@@ -1,16 +1,19 @@
 from datetime import datetime, timezone
 import time
 from zipfile import Path
+import os
 
 import pysteps
 from pysteps.utils import transformation
 
-from nowcast_blend.utils.utils import floor_to_30min
+from nowcast_blend.utils.utils import floor_to_30min, closest_ecmwf_available
 from nowcast_blend.utils.logging import set_log_format
 from nowcast_blend.utils.formatting import convert_npy_to_nc_file
 from nowcast_blend.utils.paths import build_dirs
 from nowcast_blend.download.download_radar import run_download_radar
 from nowcast_blend.download.download_destine import run_download_destine
+from nowcast_blend.download.refresh_token_HL import WIWBAuthClient
+from nowcast_blend.download.load_ecmwf_HL import download_ecmwf_15day_HL
 from nowcast_blend.preprocess.preprocess_radar import load_and_preprocess_radar
 from nowcast_blend.preprocess.preprocess_destine import load_and_preprocess_destine
 from nowcast_blend.nowcast.dgmr_orchestration import load_or_generate_dgmr_ensemble
@@ -103,8 +106,36 @@ def run_pipeline(cfg: DictConfig) -> None:
         log.info("--------------------------------------------------------------------")
         log.info("2b. IFS data - download if needed and preprocess:")
         log.info("--------------------------------------------------------------------")
-        log.warning("IFS download and preprocessing to be added")
-        # ifs_init_time = closest_ecmwf_available(date)
+        ifs_init_time = closest_ecmwf_available(date)
+        date_str = date.strftime('%Y%m%d%H')
+        date_str_day = date.strftime("%Y%m%d")
+        # ifs HydroNet (15-day ensemble, GeoTIFF) paths:
+        ifs_file_preprocessed = dirs.ifs / f'IFS_{date_str}_init{ifs_init_time}_{cfg.settings.param}_hres_interp_nlgrid_{cfg.settings.timestep_interval}_{cfg.settings.timesteps}.nc'
+        ifs_zip_HL = dirs.ifs / f"IFS_HL_15day_{date_str_day}_{cfg.settings.param}.zip"
+        ifs_file_HL_nc = dirs.ifs / f"IFS_HL_15day_{date_str_day}_{cfg.settings.param}.nc"
+
+        # HydroNet 15-day ensemble (30/50/90 percentiles, GeoTIFF) download + preprocess
+        secret = os.environ.get("HYDRONET_API_TOKEN")
+        client = os.environ.get("HYDRONET_API_CLIENT")
+        auth_client = WIWBAuthClient(client_id=client, client_secret=secret)
+        http_header = auth_client.execute()
+
+        if not os.path.exists(ifs_zip_HL):
+            log.info(f"downloading ifs HydroNet zip: {ifs_zip_HL}")
+            download_ecmwf_15day_HL(http_header, date, output_zip=ifs_zip_HL)
+        elif verb:
+            log.info(f"ifs HydroNet zip already downloaded: {ifs_zip_HL}")
+
+        if not os.path.exists(ifs_file_HL_nc):
+            log.info(f"preprocessing ifs HydroNet GeoTIFFs -> {ifs_file_HL_nc}")
+            pre_process_ifs_HL_data(ifs_zip_HL, ifs_file_HL_nc)
+        elif verb:
+            log.info(f"ifs HydroNet netcdf already exists: {ifs_file_HL_nc}")
+
+        # downscale + advection-correct + regrid onto the KNMI radar grid
+        IFS_nlgrid_blend = pre_process_ifs_data(
+            ifs_file_HL_nc, ifs_file_preprocessed, cfg, date,
+            cfg.settings.timestep_interval, cfg.settings.timesteps, radar_path, R_xr)
 
     log.info("--------------------------------------------------------------------")
     log.info("3. DGMR...    ")
