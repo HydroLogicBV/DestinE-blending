@@ -12,7 +12,7 @@ from nowcast_blend.utils.formatting import convert_npy_to_nc_file
 from nowcast_blend.utils.paths import build_dirs
 from nowcast_blend.download.download_radar import run_download_radar
 from nowcast_blend.download.download_destine import run_download_destine
-from nowcast_blend.download.refresh_token_HL import WIWBAuthClient
+from nowcast_blend.download.refresh_token_HL import HLAuthClient
 from nowcast_blend.download.load_ecmwf_HL import download_ecmwf_15day_HL
 from nowcast_blend.preprocess.preprocess_radar import load_and_preprocess_radar
 from nowcast_blend.preprocess.preprocess_destine import load_and_preprocess_destine
@@ -117,7 +117,7 @@ def run_pipeline(cfg: DictConfig) -> None:
         # HydroNet 15-day ensemble (30/50/90 percentiles, GeoTIFF) download + preprocess
         secret = os.environ.get("HYDRONET_API_TOKEN")
         client = os.environ.get("HYDRONET_API_CLIENT")
-        auth_client = WIWBAuthClient(client_id=client, client_secret=secret)
+        auth_client = HLAuthClient(client_id=client, client_secret=secret)
         http_header = auth_client.execute()
 
         if not os.path.exists(ifs_zip_HL):

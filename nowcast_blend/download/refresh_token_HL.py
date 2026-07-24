@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Omschrijving: Dit script haalt een access token op van de WIWB API en beheert deze,
+Omschrijving: Dit script haalt een access token op van de HL API en beheert deze,
 met behulp van client credentials (client ID en secret). Het access token is vereist
-voor het authenticeren van aanvragen aan de WIWB API.
+voor het authenticeren van aanvragen aan de HL API.
  
 Vereisten: een geldig client ID en client secret moeten worden opgegeven.
  
@@ -17,15 +17,15 @@ import jwt
 
 
 # ============================================================
-# WIWB API AUTHENTICATION
+# HL API AUTHENTICATION
 # ============================================================
 
 
-class WIWBAuthClient:
+class HLAuthClient:
 
     def __init__(self, client_id: str, client_secret: str):
         
-        # initialiseert de WIWBAuthClient met de benodigde authenticatiegegevens
+        # initialiseert de HLAuthClient met de benodigde authenticatiegegevens
         #
         # Args:
         #    client_id : str 
@@ -80,7 +80,7 @@ class WIWBAuthClient:
      
     def get_token(self):
 
-        # Haalt een nieuw access token op via de WIWB API met behulp van de client credentials
+        # Haalt een nieuw access token op via de HL API met behulp van de client credentials
         #
         # Returns:
         #    Optional[str]: Het access token indien succesvol opgehaald, anders None

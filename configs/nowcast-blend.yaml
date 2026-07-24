@@ -25,7 +25,7 @@ settings:
     return_weights: False      # If set to true saves a numpy array with the weights used to make the forecast
     custom_weights: False      # If set to false, uses the weights as determined by pySTEPS. If a dictionairy of weights is supplied, uses those weights
     re_do_blending: True      # If set to true, re-do the blending even though there is already a blend with the current settings saved
-    multi_model: False         # If set to true uses both ExtremesDT and IFS forecasts. Only supproted for historical forecasts for now
+    multi_model: True         # If set to true uses both ExtremesDT and IFS forecasts. Only supproted for historical forecasts for now
     noise: True                # If set to true uses noise in the blending algorithm (is overwritten if machine learning weights are seleced)
     probmatching: True         # If set to true uses probmatching in the blending algorithm (is overwritten if machine learning weights are seleced)
     pysteps_nowcast: False     # If set to True uses the pysteps nowcast instead of the DGMR nowcast
