@@ -54,8 +54,11 @@ def convert_npy_to_nc_file(
     # radar_nowcast.precip_intensity.attrs["transform"] = "No"
     blended_forecast.precip_intensity.attrs["transform"] = "No"
 
+    # capture the reference time once, before we start mutating variables/attrs
+    precip_var = blended_forecast.attrs.get("precip_var", list(blended_forecast.data_vars)[0])
+    ref_time = blended_forecast[precip_var].time.values[0]
+
     if "time" in blended_forecast.dims:
-        precip_var = blended_forecast.attrs.get("precip_var", list(blended_forecast.data_vars)[0])
         cumulative = blended_forecast[precip_var].cumsum(dim="time")
         cumulative.name = f"{precip_var}_cumulative"
         cumulative.attrs = {
@@ -63,8 +66,7 @@ def convert_npy_to_nc_file(
             "units": 'mm',
             "comment": "Cumulative sum over the time dimension",
             "grid_mapping": "polar_stereographic",
-            "coordinates": "lat lon",
-            "forecast_reference_time": str(blended_forecast[precip_var].time.values[0]),
+            "coordinates": "lat lon forecast_reference_time",
             "threshold": blended_forecast[precip_var].attrs.get("threshold", ""),
             "zerovalue": blended_forecast[precip_var].attrs.get("zerovalue", ""),
         }
@@ -73,9 +75,21 @@ def convert_npy_to_nc_file(
         )
         blended_forecast = blended_forecast.assign({cumulative.name: cumulative})
     
-    blended_forecast[precip_var].attrs["forecast_reference_time"] = str(blended_forecast[precip_var].time.values[0])
+    # real coordinate variable — required by ADAGUC, replaces the old string-attribute approach
+    blended_forecast = blended_forecast.assign_coords(forecast_reference_time=ref_time)
+    blended_forecast["forecast_reference_time"].attrs = {
+    "standard_name": "forecast_reference_time",
+    "long_name": "time of model initialization",
+}
 
-    blended_forecast.to_netcdf(path_blend[:-3] + "nc")
+    blended_forecast[precip_var].attrs["coordinates"] = "lat lon forecast_reference_time"
+
+    blended_forecast.to_netcdf(
+    path_blend[:-3] + "nc",
+    encoding={
+        "forecast_reference_time": {"units": "seconds since 1970-01-01 00:00:00 +00:00"}
+    },
+)
 
     # radar_nowcast.to_netcdf(path_nowcast[:-3] + 'nc')
 
