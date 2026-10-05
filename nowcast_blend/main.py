@@ -108,11 +108,11 @@ def run_pipeline(cfg: DictConfig) -> None:
                 destine_file, destine_date, cfg, dirs, R_xr
             )
             Extremes_DT_downloaded = True
-        except Exception:
+        except Exception as e:
             if cfg.settings.model_used == 'ExtremesDT':
-                log.exception(f"DestinE data not available for date == {date}, aborting script")
+                log.exception(f"DestinE data not available for date == {date} ({e}), aborting script")
                 raise
-            log.warning(f"DestinE data not available for date == {date}, continuing with IFS only")
+            log.warning(f"DestinE data not available for date == {date} ({e}), continuing with IFS only")
 
 
 
@@ -260,7 +260,7 @@ def run_pipeline(cfg: DictConfig) -> None:
                 f"multi-model NWP stack: {dict(IFS_ExtremesDT_blend.sizes)}, "
                 f"ensemble labels {IFS_ExtremesDT_blend.ensemble.values} (51=DestinE, rest=IFS percentiles)"
             )
-            destine_nlgrid_blend_val, destine_nlgrid_blend_metadata = converter(IFS_ExtremesDT_blend.tp.values, destine_nlgrid_blend_metadata)
+            destine_nlgrid_blend_val, destine_nlgrid_blend_metadata = converter(IFS_ExtremesDT_blend.tp.values, IFS_nlgrid_blend_metadata)
         else:
             ifs_blend = IFS_nlgrid_blend.transpose('ensemble', 'time', 'y', 'x')
             destine_nlgrid_blend_val, destine_nlgrid_blend_metadata = converter(ifs_blend.tp.values, IFS_nlgrid_blend_metadata)
