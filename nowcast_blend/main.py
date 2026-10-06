@@ -108,11 +108,11 @@ def run_pipeline(cfg: DictConfig) -> None:
                 destine_file, destine_date, cfg, dirs, R_xr
             )
             Extremes_DT_downloaded = True
-        except Exception:
+        except Exception as e:
             if cfg.settings.model_used == 'ExtremesDT':
-                log.exception(f"DestinE data not available for date == {date}, aborting script")
+                log.exception(f"DestinE data not available for date == {date} ({e}), aborting script")
                 raise
-            log.warning(f"DestinE data not available for date == {date}, continuing with IFS only")
+            log.warning(f"DestinE data not available for date == {date} ({e}), continuing with IFS only")
 
 
 

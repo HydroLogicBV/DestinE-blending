@@ -2,7 +2,9 @@ from datetime import datetime, timedelta
 import copy
 import os
 import re
+import signal
 import tempfile
+from contextlib import contextmanager
 from polytope.api import Client
 
 from nowcast_blend.utils.logging import configure_polytope_logging
@@ -10,6 +12,42 @@ from nowcast_blend.utils.logging import configure_polytope_logging
 import logging
 
 log = logging.getLogger(__name__)
+
+# A request can get stuck in the ECMWF polytope queue for a long time. Give up on each
+# download after this many seconds, so the run can continue with IFS only.
+DOWNLOAD_TIMEOUT_SECONDS = 10 * 60
+
+
+class DestinEDownloadTimeout(Exception):
+    # Deliberately not a TimeoutError: urllib3 catches those (socket.timeout), so polytope
+    # would treat it as a connection error and keep retrying instead of giving up.
+    pass
+
+
+@contextmanager
+def time_limit(seconds, what):
+    # SIGALRM also interrupts the sleeps in polytope's polling loop. Only works in the main thread.
+    def _raise_timeout(signum, frame):
+        raise DestinEDownloadTimeout(f"{what} did not finish within {seconds} seconds")
+
+    previous_handler = signal.signal(signal.SIGALRM, _raise_timeout)
+    signal.alarm(seconds)
+    try:
+        yield
+    finally:
+        signal.alarm(0)
+        signal.signal(signal.SIGALRM, previous_handler)
+
+
+def retrieve_with_time_limit(client, request, output_file, timeout):
+    try:
+        with time_limit(timeout, f"Download of {output_file}"):
+            return client.retrieve("destination-earth", request, output_file=output_file)
+    except DestinEDownloadTimeout:
+        # don't leave a half-written grib behind, the next run would pick it up as downloaded
+        if os.path.exists(output_file):
+            os.remove(output_file)
+        raise
 
 
 def summarize_download_error(error):
@@ -92,7 +130,7 @@ def run_download_destine(date, cfg, dirs):
     return destine_file_original, destine_date
 
 
-def download_destine(date, historical, destine_file_original, param):
+def download_destine(date, historical, destine_file_original, param, timeout=DOWNLOAD_TIMEOUT_SECONDS):
     configure_polytope_logging()
 
     # Make sure the whole timerange is downloaded
@@ -129,7 +167,12 @@ def download_destine(date, historical, destine_file_original, param):
 
         # Optional cleanup: revoke previous requests
         try:
-            client.revoke("all")
+            with time_limit(timeout, "Revoking previous polytope requests"):
+                client.revoke("all")
+        except DestinEDownloadTimeout as e:
+            # a server that doesn't answer a revoke won't answer a retrieve either
+            log.info(f"{e}, skipping the ExtremesDT download")
+            raise
         except Exception as e:
             log.warning("Could not revoke previous Polytope requests: %s", e)
         request = {
@@ -200,13 +243,17 @@ def download_destine(date, historical, destine_file_original, param):
     req = copy.deepcopy(request)
     try:
         log.info(f"Trying to download data for {destine_file_original}...")
-        files = client.retrieve(
-            "destination-earth", request, output_file=destine_file_original
+        files = retrieve_with_time_limit(
+            client, request, destine_file_original, timeout
         )
         log.info(f"Success for {destine_file_original}")
         destine_date = request["date"]
         # return files, destine_file_original
 
+    except DestinEDownloadTimeout as e:
+        # the queue is stuck, the previous day would wait just as long: skip ExtremesDT
+        log.info(f"{e}, skipping the ExtremesDT download")
+        raise
     except Exception as e:
         reason = summarize_download_error(e)
         log.warning("DestinE download failed for %s: %s", request["date"], reason)
@@ -236,9 +283,9 @@ def download_destine(date, historical, destine_file_original, param):
             log.info(
                 f"prev_date file does not exist either so we download it: {destine_file_original}"
             )
-            files = client.retrieve(
-                "destination-earth", req, output_file=destine_file_original
-            )  # filename is wrong
+            files = retrieve_with_time_limit(
+                client, req, destine_file_original, timeout
+            )
         else:
             log.info(f"prev_date file already exists so we just use that")
         destine_date = prev_date
