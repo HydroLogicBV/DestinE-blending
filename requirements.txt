@@ -15,7 +15,6 @@ h5py==3.14.0
 pyfftw==0.15.0
 opencv-python-headless==4.12.0.88
 scikit-learn==1.7.2
-keras==3.15.0
 
 # ECMWF and geospatial utilities
 polytope-client==0.7.7
@@ -30,7 +29,7 @@ ecmwf-api-client==1.6.5
 
 # TensorFlow stack
 tensorflow==2.20.0
-keras==3.13.2
+keras==3.15.0
 tensorflow-hub==0.16.1
 
 # pysteps (custom fork)
