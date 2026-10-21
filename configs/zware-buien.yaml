@@ -1,6 +1,6 @@
 rainfall:
   rainfall_var: "precip_intensity"
-  ens_var: "ens_number"
+  ens_var: "ensemble"
 
 processing:
   resample_to: "24h"
