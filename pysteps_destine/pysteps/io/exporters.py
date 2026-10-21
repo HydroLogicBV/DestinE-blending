@@ -504,7 +504,7 @@ def initialize_forecast_exporter_netcdf(
 
     h, w = shape
 
-    ncf.createDimension("ens_number", size=n_ens_members)
+    ncf.createDimension("ensemble", size=n_ens_members)
     ncf.createDimension("time", size=num_timesteps)
     ncf.createDimension("y", size=h)
     ncf.createDimension("x", size=w)
@@ -583,7 +583,7 @@ def initialize_forecast_exporter_netcdf(
             var_gm.setncattr(i[0], i[1])
 
     if incremental == "member" or n_ens_gt_one:
-        var_ens_num = ncf.createVariable("ens_number", int, dimensions=("ens_number",))
+        var_ens_num = ncf.createVariable("ensemble", int, dimensions=("ensemble",))
         if incremental != "member":
             var_ens_num[:] = list(range(1, n_ens_members + 1))
         var_ens_num.long_name = "ensemble member"
@@ -604,7 +604,7 @@ def initialize_forecast_exporter_netcdf(
         var_f = ncf.createVariable(
             var_name,
             datatype=datatype,
-            dimensions=("ens_number", "time", "y", "x"),
+            dimensions=("ensemble", "time", "y", "x"),
             compression="zlib",
             zlib=True,
             complevel=9,

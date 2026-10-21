@@ -1,4 +1,4 @@
-FROM python:3.10-slim
+FROM python:3.11-slim
 
 ENV PYTHONPATH=/app \
     PYTHONUNBUFFERED=1 \
@@ -11,7 +11,7 @@ WORKDIR /app
 COPY requirements.txt ./requirements.txt
 COPY pysteps_destine ./pysteps_destine
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
     build-essential \
     cdo \
     libeccodes0 \
@@ -21,6 +21,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && pip install --no-cache-dir --timeout 300 -r requirements.txt \
     && apt-get purge -y build-essential \
     && apt-get autoremove -y \
+    && python -m pip uninstall -y pip \
     && rm -rf /var/lib/apt/lists/* /root/.cache /tmp/*
 
 COPY nowcast_blend ./nowcast_blend

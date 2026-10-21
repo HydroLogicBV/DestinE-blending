@@ -167,7 +167,7 @@ def convert_input_to_xarray_dataset(
 
     if precip.ndim == 4:
         ens_number, timesteps, h, w = precip.shape
-        dims = ["ens_number", "time", "y", "x"]
+        dims = ["ensemble", "time", "y", "x"]
 
         if startdate is None:
             raise Exception("startdate missing")
@@ -309,8 +309,8 @@ def convert_input_to_xarray_dataset(
     }
 
     if ens_number is not None:
-        coords["ens_number"] = (
-            ["ens_number"],
+        coords["ensemble"] = (
+            ["ensemble"],
             list(range(1, ens_number + 1, 1)),
             {
                 "long_name": "ensemble member",
