@@ -293,3 +293,67 @@ def download_destine(date, historical, destine_file_original, param, timeout=DOW
     # server.execute(request, local_file_today)
 
     return destine_file_original, destine_date
+
+
+# Extra areas outside the Netherlands for which the ExtremesDT forecast is downloaded
+# (settings.destine_download_SA_NZ). Boxes as (lon_min, lat_min, lon_max, lat_max).
+DESTINE_SA_NZ_AREAS = {
+    "Thames": (175.49, -37.20, 175.74, -37.00),  # New Zealand
+    "Mzinti": (31.54, -25.86, 31.80, -25.63),    # South Africa
+}
+# The forecast of this many days before the run date is downloaded.
+DESTINE_SA_NZ_DAYS_BACK = 2
+
+
+def download_destine_SA_NZ(date, destine_path, param="228", timeout=DOWNLOAD_TIMEOUT_SECONDS):
+    """Download the full 96 h ExtremesDT forecast of 00 UTC two days before `date` for each area
+    in DESTINE_SA_NZ_AREAS, to <destine_path><area>/<yyyy>/<mm>/DestinE_ExtremesDT_<area>_<yyyymmdd>_<param>.grib.
+    Files that already exist are skipped. Returns the paths of the files that are present."""
+    forecast_date = date - timedelta(days=DESTINE_SA_NZ_DAYS_BACK)
+    date_str = forecast_date.strftime('%Y%m%d')
+    client = None
+    files = []
+    for area_name, (lon_min, lat_min, lon_max, lat_max) in DESTINE_SA_NZ_AREAS.items():
+        area_path = os.path.join(destine_path, area_name, f"{forecast_date.year}", f"{forecast_date.month:02d}")
+        os.makedirs(area_path, exist_ok=True)
+        output_file = os.path.join(area_path, f"DestinE_ExtremesDT_{area_name}_{date_str}_{param}.grib")
+        if os.path.exists(output_file):
+            log.info(f"ExtremesDT {area_name} forecast of {date_str} already downloaded: {output_file}")
+            files.append(output_file)
+            continue
+
+        request = {
+            "class": "d1",
+            "expver": "0001",
+            "grid": "0.05/0.05",
+            "area": f"{lat_max}/{lon_min}/{lat_min}/{lon_max}",  # N/W/S/E
+            "stream": "oper",
+            "dataset": "extremes-dt",
+            "date": date_str,
+            "time": "0000",
+            "type": "fc",
+            "levtype": "sfc",
+            "step": "/".join(f"{i}-{i+1}" for i in range(96)),
+            "param": str(param),
+        }
+        if client is None:
+            # same client as the Netherlands download, so the credentials (POLYTOPE_USER_KEY) are found the same way
+            client = create_polytope_client(log_level="INFO")
+            configure_polytope_logging()
+        # download to a temporary name, so a failed download is not taken as done by the next run
+        tmp_file = output_file + ".part"
+        try:
+            log.info(f"Downloading ExtremesDT {area_name} forecast of {date_str} to {output_file}")
+            retrieve_with_time_limit(client, request, tmp_file, timeout)
+            os.replace(tmp_file, output_file)
+            files.append(output_file)
+        except DestinEDownloadTimeout as e:
+            # the queue is stuck, the other area would wait just as long
+            log.warning(f"{e}, skipping the remaining ExtremesDT SA/NZ downloads")
+            break
+        except Exception as e:
+            log.warning(f"ExtremesDT {area_name} forecast of {date_str} could not be downloaded: {e}")
+        finally:
+            if os.path.exists(tmp_file):
+                os.remove(tmp_file)
+    return files

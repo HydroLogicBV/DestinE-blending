@@ -11,13 +11,13 @@ from pysteps.utils import transformation
 from nowcast_blend.utils.utils import floor_to_30min, closest_ecmwf_available
 from nowcast_blend.utils.logging import set_log_format
 from nowcast_blend.utils.formatting import convert_npy_to_nc_file
-from nowcast_blend.utils.paths import build_dirs
+from nowcast_blend.utils.paths import build_dirs, DESTINE_DIR
 from nowcast_blend.download.download_radar import run_download_radar
-from nowcast_blend.download.download_destine import run_download_destine
+from nowcast_blend.download.download_destine import run_download_destine, download_destine_SA_NZ
 from nowcast_blend.download.refresh_token_HL import HLAuthClient
 from nowcast_blend.download.load_ecmwf_HL import download_ecmwf_15day_HL
 from nowcast_blend.preprocess.preprocess_radar import load_and_preprocess_radar
-from nowcast_blend.preprocess.preprocess_destine import load_and_preprocess_destine
+from nowcast_blend.preprocess.preprocess_destine import load_and_preprocess_destine, pre_process_destine_SA_NZ
 from nowcast_blend.preprocess.preprocess_ifs import pre_process_ifs_data, pre_process_ifs_HL_data
 from nowcast_blend.nowcast.dgmr_orchestration import load_or_generate_dgmr_ensemble
 from nowcast_blend.postprocess.ensemble_probabilities_destine import ensemble_probabilities_destine
@@ -345,6 +345,28 @@ def run_pipeline(cfg: DictConfig) -> None:
     blended_file_zware_buien = Path(str(blended_file)[:-4] + "_zware_buien.nc")
     ensemble_probabilities_destine(config_path, str(blended_file_nc), blended_file_zware_buien)
 
+    # Done after the Netherlands blend, so a slow ECMWF queue does not delay it. Already
+    # downloaded files are skipped, so only the first run of a day downloads.
+    if cfg.settings.get("destine_download_SA_NZ", False):
+        log.info("--------------------------------------------------------------------")
+        log.info("8. download and pre-process the ExtremesDT forecast of 2 days ago for South Africa and New Zealand...")
+        log.info("--------------------------------------------------------------------")
+        try:
+            # root of the Netherlands ExtremesDT files, so the area folders sit beside the yyyy/mm folders
+            sa_nz_files = download_destine_SA_NZ(date, dirs.input / DESTINE_DIR, param=cfg.settings.param)
+        except Exception:
+            log.exception("ExtremesDT download for South Africa and New Zealand failed")
+            sa_nz_files = []
+        for sa_nz_file in sa_nz_files:
+            # hourly, downscaled with RainFARM (no advection correction, no regridding)
+            sa_nz_file_preprocessed = sa_nz_file[:-len('.grib')] + '_hres_1h.nc'
+            if os.path.exists(sa_nz_file_preprocessed):
+                log.info(f"pre-processed file already exists: {sa_nz_file_preprocessed}")
+                continue
+            try:
+                pre_process_destine_SA_NZ(sa_nz_file, sa_nz_file_preprocessed)
+            except Exception:
+                log.exception(f"Pre-processing of {sa_nz_file} failed")
 
     log.info(f"{(time.time() - start_time)/60} minutes")
 
