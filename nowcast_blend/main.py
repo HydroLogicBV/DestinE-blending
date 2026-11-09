@@ -359,7 +359,17 @@ def run_pipeline(cfg: DictConfig) -> None:
             sa_nz_files = []
         for sa_nz_file in sa_nz_files:
             # hourly, downscaled with RainFARM (no advection correction, no regridding)
-            sa_nz_file_preprocessed = sa_nz_file[:-len('.grib')] + '_hres_1h.nc'
+            # written to <output>/ExtremesDT/<yyyy>/<mm>/ (all areas together; the area is in the
+            # file name). yyyy/mm is taken from the raw file's folder, i.e. the forecast date.
+            month_dir = os.path.dirname(sa_nz_file)
+            year_dir = os.path.dirname(month_dir)
+            sa_nz_output_dir = os.path.join(
+                dirs.output, DESTINE_DIR, os.path.basename(year_dir), os.path.basename(month_dir)
+            )
+            os.makedirs(sa_nz_output_dir, exist_ok=True)
+            sa_nz_file_preprocessed = os.path.join(
+                sa_nz_output_dir, os.path.basename(sa_nz_file)[:-len('.grib')] + '_hres_1h.nc'
+            )
             if os.path.exists(sa_nz_file_preprocessed):
                 log.info(f"pre-processed file already exists: {sa_nz_file_preprocessed}")
                 continue
