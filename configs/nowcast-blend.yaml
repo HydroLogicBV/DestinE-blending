@@ -32,6 +32,7 @@ settings:
     custom_extention: None     # If a custom extention is provided, adds this custom extention to the filename at the end
     use_machine_learning_weights: True     # If set to true, uses the machine learning algorithm to determine the weights used by the blending algorithm and surpasses any custom weights given.
     #TODO: KW: if this is false where does it use the existing ml weights?
+    destine_download_SA_NZ: True  # If set to true, also downloads the ExtremesDT forecast of 2 days ago for the South Africa (Mzinti) and New Zealand (Thames) areas.
 
 runtime:
     log_level: INFO             # Application log level. Use DEBUG for more detailed nowcast-blend logs.

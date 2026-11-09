@@ -429,3 +429,59 @@ def pre_process_destine_data(
     ), f"Not the correct length timesteps in destine file ({hres_interp_nlgrid_file}), length is currently: {len_nwp} while it should be {(timesteps + 1)} "
 
     return destinE_nlgrid_blend
+
+
+def _downscaled_coords(coord, factor):
+    # centres of the sub-cells when every grid cell is split in `factor` parts; keeps the order of the data
+    d = coord[1] - coord[0]
+    return coord[0] - d / 2 + d / (2 * factor) + np.arange(len(coord) * factor) * d / factor
+
+
+def pre_process_destine_SA_NZ(grib_file, output_file, ds_factor=4):
+    """Pre-process an ExtremesDT forecast of one of the South Africa / New Zealand areas
+    (download_destine_SA_NZ): de-accumulate to hourly precipitation [mm/h] and downscale
+    ds_factor times with RainFARM. Unlike pre_process_destine_data there is no advection-corrected
+    interpolation in time (the output stays hourly) and no regridding to the KNMI radar grid.
+    The whole forecast is kept, on the area's own (downscaled) lat/lon grid."""
+    log.info(f"Pre-processing {grib_file}")
+    destinE_data = xr.open_dataset(grib_file, engine="cfgrib", backend_kwargs={"indexpath": ""})
+
+    # tp is the total since the start of the forecast in m, although the GRIB step ranges say 0-1, 1-2, ...
+    accum_prcp = destinE_data["tp"].values * 1000
+    precipitation = np.diff(accum_prcp, axis=0, prepend=np.zeros_like(accum_prcp[:1]))
+    precipitation = np.clip(precipitation, 0, None)  # GRIB packing gives tiny negative values
+    # each value is the rain of the hour that ends at its valid time
+    valid_times = pd.to_datetime(destinE_data["valid_time"].values)
+    assert np.all(np.diff(valid_times) == pd.Timedelta(hours=1)), f"steps in {grib_file} are not hourly"
+
+    # DOWNSCALE WITH RAINFARM
+    ny, nx = precipitation.shape[1:]
+    destinE_data_hres = np.zeros((precipitation.shape[0], ny * ds_factor, nx * ds_factor))
+    for i, precipitation_i in enumerate(precipitation):
+        if np.nanstd(precipitation_i) == 0:
+            # RainFARM fails on a field without variability, keep its (uniform) value
+            destinE_data_hres[i] = np.kron(precipitation_i, np.ones((ds_factor, ds_factor)))
+        else:
+            destinE_data_hres[i] = rainfarm.downscale(precipitation_i, ds_factor=ds_factor, kernel_type="gaussian")
+
+    lat = _downscaled_coords(destinE_data["latitude"].values, ds_factor)
+    lon = _downscaled_coords(destinE_data["longitude"].values, ds_factor)
+    ds_out = xr.Dataset(
+        {"tp": (("time", "lat", "lon"), destinE_data_hres.astype("float32"),
+                {"long_name": "Precipitation rate", "units": "mm/h"})},
+        coords={
+            "time": valid_times,
+            "lat": ("lat", lat, {"units": "degrees_north"}),
+            "lon": ("lon", lon, {"units": "degrees_east"}),
+        },
+        attrs={
+            "source": f"DestinE ExtremesDT forecast of {pd.to_datetime(destinE_data['time'].values):%Y-%m-%d %H} UTC ({os.path.basename(grib_file)})",
+            "processing": f"de-accumulated to hourly precipitation, downscaled {ds_factor}x with RainFARM"
+        },
+    )
+    # write under a temporary name, so an interrupted run does not leave a file that looks finished
+    tmp_file = output_file[:-3] + ".part.nc"
+    ds_out.to_netcdf(tmp_file)
+    os.replace(tmp_file, output_file)
+    log.info(f"Pre-processed file written: {output_file}")
+    return output_file
