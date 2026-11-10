@@ -34,6 +34,16 @@ def load_config(path: str) -> RainfallConfig:
 
 
 
+def time_step_hours(time: xr.DataArray) -> float:
+    """Length of the (constant) time step of `time` in hours."""
+    if time.size < 2:
+        raise ValueError("Need at least 2 time steps to determine the time step length")
+    steps = np.diff(time.values) / np.timedelta64(1, "s")
+    if not np.all(steps == steps[0]):
+        raise ValueError(f"Time steps are not constant: {np.unique(steps)} s")
+    return float(steps[0]) / 3600.0
+
+
 # --- Helper function om 2 timesteps te verzekeren ---
 def ensure_two_timesteps(da: xr.DataArray) -> xr.DataArray:
     """
@@ -161,9 +171,11 @@ def process_rainfall(
             results[f"p_{int(p*100)}th_percentile"] = ensure_two_timesteps(pval)
 
     if config.hours_list:
+        step_hours = time_step_hours(XRarray.time)
         for h in config.hours_list:
-            if XRarray.sizes["time"] >= h:
-                ysum = XRarray.rolling(time=h, min_periods=h).sum().fillna(0.0)
+            n_steps = int(round(h / step_hours))  # window of h hours, in time steps
+            if XRarray.sizes["time"] >= n_steps:
+                ysum = XRarray.rolling(time=n_steps, min_periods=n_steps).sum().fillna(0.0)
 
                 if config.thresholds:
                     for th in config.thresholds:
@@ -282,16 +294,8 @@ def ensemble_probabilities_destine(config_path, path, output_file):
     #output_file = Path(r"cRAINFALL_BLENDING_NC_ZB.nc")
     # --- AANPASSEN VOOR OPERATIONEEL ---
 
+    # Keep the real time axis of the blended forecast (30 min steps), do not relabel it as hourly.
     ds = xr.open_dataset(path)
-
-    ds = ds.assign_coords(
-        time=ds["time"].values[0] + np.arange(len(ds.time)) * np.timedelta64(1, "h")
-    )
-    ds = xr.open_dataset(path)
-
-    ds = ds.assign_coords(
-        time=ds["time"].values[0] + np.arange(len(ds.time)) * np.timedelta64(1, "h")
-    )
 
     logging.basicConfig(
         level=logging.INFO,
@@ -303,6 +307,14 @@ def ensemble_probabilities_destine(config_path, path, output_file):
     da = ds[config.rainfall_var]
     da = da.where(np.isfinite(da)).fillna(0)
     da = da.where(da >= 0, 0)
+
+    # The statistics sum the values over time, so convert rates (mm/h) to the amount per time step (mm).
+    units = ds[config.rainfall_var].attrs.get("units")
+    if units == "mm/h":
+        da = da * time_step_hours(da.time)
+    elif units != "mm":
+        raise ValueError(f"Cannot compute rainfall amounts from units {units!r}")
+    da.attrs["units"] = "mm"
 
     ds_with_stats = add_statistics_to_dataset(ds, da, config)
 
