@@ -59,12 +59,21 @@ def convert_npy_to_nc_file(
     ref_time = blended_forecast[precip_var].time.values[0]
 
     if "time" in blended_forecast.dims:
-        cumulative = blended_forecast[precip_var].cumsum(dim="time")
+        # The fields are rates (mm/h) over `timestep` seconds, so each one adds rate * timestep/3600 mm.
+        # A plain cumsum of mm/h would overestimate the amount by 3600/timestep (2x for 30 min steps).
+        precip_units = blended_forecast[precip_var].attrs.get("units")
+        if precip_units == "mm/h":
+            step_hours = timestep / 3600.0
+        elif precip_units == "mm":
+            step_hours = 1.0  # already an amount per time step
+        else:
+            raise ValueError(f"Cannot compute cumulative precipitation from units {precip_units!r}")
+        cumulative = (blended_forecast[precip_var] * step_hours).cumsum(dim="time")
         cumulative.name = f"{precip_var}_cumulative"
         cumulative.attrs = {
             "long_name": "cumulative precipitation over the forecast period",
             "units": 'mm',
-            "comment": "Cumulative sum over the time dimension",
+            "comment": f"Cumulative sum over the time dimension of {precip_var} [{precip_units}] times the time step ({timestep} s)",
             "grid_mapping": "polar_stereographic",
             "coordinates": "lat lon forecast_reference_time",
             "threshold": blended_forecast[precip_var].attrs.get("threshold", ""),
