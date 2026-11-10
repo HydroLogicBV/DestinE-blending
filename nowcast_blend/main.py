@@ -101,9 +101,11 @@ def run_pipeline(cfg: DictConfig) -> None:
     log.info("2a. DestinE data - download and preprocess")
     log.info("--------------------------------------------------------------------")
     Extremes_DT_downloaded = False
+    destine_latest_date = None  # date (yyyymmdd) of the ExtremesDT forecast found here, reused in step 8
     if cfg.settings.model_used != 'IFS':
         try:
             destine_file, destine_date = run_download_destine(date, cfg, dirs)
+            destine_latest_date = destine_date
             destine_nlgrid_blend = load_and_preprocess_destine(
                 destine_file, destine_date, cfg, dirs, R_xr
             )
@@ -349,11 +351,16 @@ def run_pipeline(cfg: DictConfig) -> None:
     # downloaded files are skipped, so only the first run of a day downloads.
     if cfg.settings.get("destine_download_SA_NZ", False):
         log.info("--------------------------------------------------------------------")
-        log.info("8. download and pre-process the ExtremesDT forecast of 2 days ago for South Africa and New Zealand...")
+        log.info("8. download and pre-process the latest available ExtremesDT forecast for South Africa and New Zealand...")
         log.info("--------------------------------------------------------------------")
         try:
-            # root of the Netherlands ExtremesDT files, so the area folders sit beside the yyyy/mm folders
-            sa_nz_files = download_destine_SA_NZ(date, dirs.input / DESTINE_DIR, param=cfg.settings.param)
+            # root of the Netherlands ExtremesDT files, so the area folders sit beside the yyyy/mm folders.
+            # latest_available: forecast dates newer than the one the Netherlands download found are not
+            # out yet, so they are not requested again (None when that download did not run or failed).
+            sa_nz_files = download_destine_SA_NZ(
+                date, dirs.input / DESTINE_DIR, param=cfg.settings.param,
+                latest_available=destine_latest_date,
+            )
         except Exception:
             log.exception("ExtremesDT download for South Africa and New Zealand failed")
             sa_nz_files = []
